@@ -1,0 +1,13 @@
+.scroll-custom-table {
+  resize: none !important;
+  padding-right: 5px;
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+    background-color: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #202d41;
+    border-radius: 10px;
+  }
+}
