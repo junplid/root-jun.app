@@ -13,6 +13,7 @@ interface PropsLogin {
 export const LoginPage: FC = (): JSX.Element => {
   const [_cookies, setCookies, removeCookie] = useCookies(["auth_root"]);
   const [load, setLoad] = useState<boolean>(false);
+  const [s, setS] = useState<boolean>(false);
   const [fields, setFields] = useState<PropsLogin>({
     email: "",
     password: "",
@@ -39,7 +40,34 @@ export const LoginPage: FC = (): JSX.Element => {
     }
   }, []);
 
+  const register = useCallback(async (props: PropsLogin) => {
+    try {
+      setLoad(true);
+      setError("");
+      const { data } = await api.post(`/public/register-root`, props);
+      setCookies("auth_root", `BEARER ${data.token}`);
+      setTimeout(() => navigate("/"), 500);
+    } catch (error) {
+      setLoad(false);
+      if (error instanceof AxiosError) {
+        setError(
+          error.response?.data.details?.[0]?.message || "Erro ao fazer login"
+        );
+        return;
+      }
+      setError("Erro inesperado ao fazer login");
+    }
+  }, []);
+
   useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get(`/public/ex-root`);
+        setS(data.s);
+      } catch (error) {
+        return;
+      }
+    })();
     removeCookie("auth_root");
   }, []);
 
@@ -105,35 +133,71 @@ export const LoginPage: FC = (): JSX.Element => {
           {error && (
             <div className="text-red-600 text-sm text-center mt-1">{error}</div>
           )}
-          <button
-            className="w-full p-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition font-bold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-            type="submit"
-            disabled={load}
-          >
-            {load && (
-              <svg
-                className="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
+          <div className="flex flex-col gap-3">
+            <button
+              className="w-full p-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition font-bold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              type="submit"
+              disabled={load}
+            >
+              {load && (
+                <svg
+                  className="animate-spin h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
+                </svg>
+              )}
+              {load ? "Entrando..." : "Entrar"}
+            </button>
+            {!s && (
+              <button
+                className="w-full p-3 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition font-bold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                type="button"
+                disabled={load}
+                onClick={() => {
+                  register(fields);
+                }}
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v8z"
-                ></path>
-              </svg>
+                {load && (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8z"
+                    ></path>
+                  </svg>
+                )}
+                {load ? "Criando..." : "Criar conta"}
+              </button>
             )}
-            {load ? "Entrando..." : "Entrar"}
-          </button>
+          </div>
         </form>
       </div>
     </div>
