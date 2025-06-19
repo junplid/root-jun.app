@@ -58,12 +58,26 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
     }
   }, [fields]);
 
-  const get = useCallback(async (id: number) => {
+  // const get = useCallback(async (id: number) => {
+  //   try {
+  //     const { data } = await api.get(`/root/shooting-speed/${id}`, {
+  //       headers: { Authorization: cookies.auth_root },
+  //     });
+  //     setFields(data.shootingSpeed);
+  //   } catch (error) {
+  //     if (error instanceof AxiosError) {
+  //       alert(error.response?.data.details[0].message);
+  //       return;
+  //     }
+  //   }
+  // }, []);
+
+  const deleteS = useCallback(async (id: number) => {
     try {
-      const { data } = await api.get(`/root/shooting-speed/${id}`, {
+      await api.delete(`/root/shooting-speed/${id}`, {
         headers: { Authorization: cookies.auth_root },
       });
-      setFields(data.shootingSpeed);
+      setShootingSpeeds((ranges) => ranges.filter((range) => range.id !== id));
     } catch (error) {
       if (error instanceof AxiosError) {
         alert(error.response?.data.details[0].message);
@@ -326,7 +340,7 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
                   </p>
                 </div>
                 <div className="flex gap-2 p-4">
-                  <button
+                  {/* <button
                     onClick={async () => {
                       await get(item.id);
                       setEditInterval(item.id);
@@ -334,6 +348,12 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
                     className="w-full p-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition"
                   >
                     Editar
+                  </button> */}
+                  <button
+                    onClick={async () => await deleteS(item.id)}
+                    className="w-full p-2 rounded-lg text-white bg-red-600 hover:bg-red-700 transition"
+                  >
+                    Deletar
                   </button>
                 </div>
               </article>
