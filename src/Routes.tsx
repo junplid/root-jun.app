@@ -7,6 +7,8 @@ import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { AccountsPage } from "./pages/Accounts";
 import { FlowsPage } from "./pages/Flows";
+import { GeralLogsPage } from "./pages/GeralLogs";
+import { SocketProvider } from "./contexts/socket.context";
 
 export const RoutesApp: FC = (): JSX.Element => (
   <BrowserRouter>
@@ -16,7 +18,9 @@ export const RoutesApp: FC = (): JSX.Element => (
         path=""
         element={
           <AuthorizationProvider>
-            <AppLayout />
+            <SocketProvider>
+              <AppLayout />
+            </SocketProvider>
           </AuthorizationProvider>
         }
       >
@@ -24,6 +28,7 @@ export const RoutesApp: FC = (): JSX.Element => (
         <Route path={"/shooting-speeds"} element={<ShootingSpeedsPage />} />
         <Route path={"/accounts"} element={<AccountsPage />} />
         <Route path={"/flows"} element={<FlowsPage />} />
+        <Route path={"/geral-logs"} element={<GeralLogsPage />} />
       </Route>
 
       <Route path={"*"} element={<div>Página não encontrada</div>} />

@@ -93,6 +93,18 @@ export const AppLayout = memo(function AppLayout() {
             </MenuItem>
             <MenuItem
               onClick={() => setToggled(false)}
+              component={<Link to={"/geral-logs"} />}
+              icon={<FiUsers size={18} />}
+              className={
+                isActive("/geral-logs")
+                  ? "bg-blue-50 text-blue-700 font-bold"
+                  : ""
+              }
+            >
+              Logs gerais
+            </MenuItem>
+            <MenuItem
+              onClick={() => setToggled(false)}
               component={<Link to={"/shooting-speeds"} />}
               icon={<FiTag size={18} />}
               className={

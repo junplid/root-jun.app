@@ -1,0 +1,17 @@
+.scroll-custom-table {
+  resize: none !important;
+  width: 100%;
+}
+
+.scroll-custom-table::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-custom-table::-webkit-scrollbar-thumb {
+  background-color: #202122;
+  border-radius: 10px;
+}
+
+.container__virtuoso div {
+  padding-right: 0 !important;
+}

@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-// import { ViewBottomTableComponent } from "./ViewBottom";
-import "./styles.scss";
-import { v4 } from "uuid";
+import { useMemo, JSX } from "react";
+import "./styles.css";
+import { nanoid } from "nanoid";
+import { TableVirtuoso } from "react-virtuoso";
+import { Spinner } from "@chakra-ui/react";
 
 export interface Column {
   name: string;
@@ -16,6 +17,7 @@ interface Props {
   columns: Column[];
   rows: Rows[];
   textEmpity?: string;
+  load: boolean;
 }
 
 interface RowColumnOrdened {
@@ -32,14 +34,14 @@ export const TableComponent = (props: Props): JSX.Element => {
       const columns = props.columns.map((column) => {
         let objRow: {
           key: string;
-          value: JSX.Element | string;
+          value: JSX.Element | string | number;
         } | null = null;
 
         for (const rowObj of Object.entries(row)) {
           const [key, value] = rowObj;
           if (column.render) {
             return (objRow = {
-              key: v4(),
+              key: nanoid(),
               value: column.render(row),
             });
           }
@@ -47,23 +49,76 @@ export const TableComponent = (props: Props): JSX.Element => {
         }
         return objRow;
       });
-      return { id: row.id, columns: columns.filter((s) => s) };
+      return {
+        id: row.id,
+        columns: columns.filter((s) => s !== null || s !== undefined),
+      };
     });
   }, [props.columns, props.rows]);
 
   return (
-    <div className="scroll-custom-table h-full overflow-y-auto">
-      <table className="min-w-full table-auto">
+    <div className="relative w-full">
+      <TableVirtuoso
+        className="scroll-custom-table container__virtuoso"
+        style={{ height: "100%", minWidth: "100%" }}
+        data={rows}
+        fixedHeaderContent={() => (
+          <tr>
+            {props.columns.map((column) => (
+              <th
+                key={column.key}
+                align="left"
+                className="select-none font-semibold px-4 py-2 text-sm"
+                style={{ width: column.styles?.width }}
+              >
+                {column.name}
+              </th>
+            ))}
+          </tr>
+        )}
+        itemContent={(_index, row) =>
+          row.columns.map((column) => {
+            if (column !== null) {
+              return (
+                <td
+                  key={row.id + column.key}
+                  aria-details=""
+                  className="cursor-default px-4 py-2"
+                  style={{ fontSize: 13 }}
+                >
+                  {column.value === typeof "string" ? (
+                    <span className="line-clamp-1">{column.value}</span>
+                  ) : (
+                    column.value
+                  )}
+                </td>
+              );
+            }
+          })
+        }
+      />
+      {!rows.length && props.textEmpity && !props.load && (
+        <div className="cursor-default absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 px-4 py-2 text-sm dark:text-white/30 text-black/50">
+          {props.textEmpity}
+        </div>
+      )}
+      {props.load && (
+        <div className="cursor-default absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 px-4 py-2 text-sm dark:text-white/30 text-black/50">
+          <Spinner size={"md"} />
+        </div>
+      )}
+
+      {/* <table className="min-w-full table-auto">
         <thead
           style={{ height: 50 }}
-          className="head-table sticky top-0 bg-gray-200 shadow-md"
+          className="head-table  sticky top-0 z-20"
         >
           <tr>
             {props.columns.map((column) => (
               <th
                 key={column.key}
                 align="left"
-                className="select-none px-4 py-2 text-sm font-normal"
+                className="select-none font-semibold px-4 py-2 text-sm"
                 style={{ width: column.styles?.width }}
               >
                 {column.name}
@@ -78,7 +133,7 @@ export const TableComponent = (props: Props): JSX.Element => {
                 <tr
                   key={row.id}
                   style={{ height: 45 }}
-                  className="duration-[140ms] odd:bg-[#92929217] even:bg-[#6b6b6b13] hover:bg-[#9292922d]"
+                  className="dark:odd:bg-[#55555507] dark:even:bg-[#6b6b6b0a] dark:hover:bg-[#9292920a] odd:bg-[#f5f5f569] even:bg-[#e0e0e04d] hover:bg-[#ffffff]"
                 >
                   {row.columns.map((column) => {
                     if (column !== null) {
@@ -101,20 +156,31 @@ export const TableComponent = (props: Props): JSX.Element => {
                 </tr>
               );
             })}
-          {/* {!!rows.length && <ViewBottomTableComponent />} */}
-          {!rows.length && props.textEmpity && (
+          {!!rows.length && <ViewBottomTableComponent />}
+          {!rows.length && props.textEmpity && !props.load && (
             <tr>
               <td
                 colSpan={props.columns.length}
                 align="center"
-                className="cursor-default px-4 py-2 text-sm text-white/70"
+                className="cursor-default px-4 py-2 text-sm dark:text-white/30 text-black/50"
               >
                 {props.textEmpity}
               </td>
             </tr>
           )}
+          {props.load && (
+            <tr>
+              <td
+                colSpan={props.columns.length}
+                align="center"
+                className="cursor-default px-4 pt-20 py-2 text-sm dark:text-white/30 text-black/50"
+              >
+                <Spinner size={"md"} />
+              </td>
+            </tr>
+          )}
         </tbody>
-      </table>
+      </table> */}
     </div>
   );
 };
