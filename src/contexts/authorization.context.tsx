@@ -41,9 +41,7 @@ export const AuthorizationProvider: FC<PropsAuthorizationContextProvider_I> = ({
     try {
       const token = cookies.auth_root;
       if (!token) return handleLogout();
-      await api.get(`/root/verify-authorization`, {
-        headers: { Authorization: token },
-      });
+      await api.get(`/root/verify-authorization`);
       setIsLoaded(true);
       setIsAuth(true);
     } catch (error) {

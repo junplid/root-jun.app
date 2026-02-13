@@ -12,20 +12,21 @@ export const AppLayout = memo(function AppLayout() {
 
   return (
     <div className="overflow-y-scroll flex flex-col relative w-full h-full gap-y-1">
-      <header className="fixed z-10 bg-white top-0 shadow-md flex items-center justify-between w-full px-5 py-2 border-b border-gray-100">
+      <header className="fixed z-10 bg-white top-0 flex items-center justify-between w-full px-5 py-2 border-b border-gray-100">
         <div className="flex items-center w-full gap-x-2">
           <div className="flex items-center w-full justify-between gap-x-10">
             <div className="flex items-center gap-x-3">
               <button
-                className="hover:text-blue-600 min-[440px]:mr-4 mr-1 duration-200 text-blue-700"
+                className="hover:text-gray-600 min-[440px]:mr-4 mr-1 duration-200 text-gray-700"
                 onClick={() => setToggled(true)}
                 aria-label="Abrir menu"
               >
                 <HiMenu size={30} />
               </button>
-              <span className="text-xl font-bold min-[440px]:block hidden text-blue-700 tracking-tight select-none">
-                <span className="font-extrabold">WHABOT</span>{" "}
-                <span className="font-light">#root</span>
+              <span className="text-sm font-bold min-[440px]:block hidden text-gray-700 tracking-tight select-none">
+                <span className="font-extrabold">
+                  Painel ROOT <span className="font-light">junplid.com.br</span>
+                </span>{" "}
               </span>
             </div>
             <Link
@@ -49,15 +50,6 @@ export const AppLayout = memo(function AppLayout() {
           backgroundColor="#ffffff"
           breakPoint="always"
         >
-          <div className="w-full p-5 flex flex-col text-lg border-b border-gray-100">
-            <span className="text-xl font-bold text-blue-700 select-none">
-              <span className="font-extrabold">WHABOT</span>{" "}
-              <span className="font-light">#root</span>
-            </span>
-            <small className="leading-none text-gray-400 mt-1">
-              Ultima att: 06/06/2024
-            </small>
-          </div>
           <Menu>
             <MenuItem
               onClick={() => setToggled(false)}
