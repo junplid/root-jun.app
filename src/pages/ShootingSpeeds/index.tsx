@@ -1,6 +1,5 @@
 import { AxiosError } from "axios";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useCookies } from "react-cookie";
 import { api } from "../../services/api";
 import { calculateDailyShots } from "../../utils/calculateDailyShots";
 
@@ -15,7 +14,7 @@ interface ShootingSpeedField {
 
 export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
   const [fields, setFields] = useState<ShootingSpeedField>(
-    {} as ShootingSpeedField
+    {} as ShootingSpeedField,
   );
   const [shootingSpeeds, setShootingSpeeds] = useState<
     {
@@ -27,7 +26,6 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
     }[]
   >([]);
   const [editInterval, setEditInterval] = useState<number>(0);
-  const [cookies] = useCookies(["auth_root"]);
 
   const shotsPerDay = useMemo(() => {
     if (fields.numberShots && fields.timeRest && fields.timeBetweenShots) {
@@ -42,13 +40,9 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
 
   const create = useCallback(async () => {
     try {
-      await api.post("/root/shooting-speed", fields, {
-        headers: { Authorization: cookies.auth_root },
-      });
+      await api.post("/root/shooting-speed", fields);
       setFields({} as ShootingSpeedField);
-      const { data } = await api.get("/root/shooting-speeds", {
-        headers: { Authorization: cookies.auth_root },
-      });
+      const { data } = await api.get("/root/shooting-speeds");
       setShootingSpeeds(data.shootingSpeeds);
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -74,9 +68,7 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
 
   const deleteS = useCallback(async (id: number) => {
     try {
-      await api.delete(`/root/shooting-speed/${id}`, {
-        headers: { Authorization: cookies.auth_root },
-      });
+      await api.delete(`/root/shooting-speed/${id}`);
       setShootingSpeeds((ranges) => ranges.filter((range) => range.id !== id));
     } catch (error) {
       if (error instanceof AxiosError) {
@@ -89,9 +81,7 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/root/shooting-speeds", {
-          headers: { Authorization: cookies.auth_root },
-        });
+        const { data } = await api.get("/root/shooting-speeds");
         setShootingSpeeds(data.shootingSpeeds);
       } catch (error) {
         if (error instanceof AxiosError) {
@@ -122,7 +112,6 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
         // @ts-expect-error
         const { shotsPerDay, ...rest } = fields;
         await api.put(`/root/shooting-speed/${id}`, undefined, {
-          headers: { Authorization: cookies.auth_root },
           params: rest,
         });
         setShootingSpeeds((rages) =>
@@ -134,7 +123,7 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
               }
             }
             return range;
-          })
+          }),
         );
         setEditInterval(0);
       } catch (error) {
@@ -146,7 +135,7 @@ export const ShootingSpeedsPage: React.FC = (): JSX.Element => {
         }
       }
     },
-    [cookies, fields]
+    [fields],
   );
 
   return (

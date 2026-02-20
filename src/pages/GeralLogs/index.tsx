@@ -1,7 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api";
 import { AxiosError } from "axios";
-import { useCookies } from "react-cookie";
 import { SocketContext } from "../../contexts/contexts";
 import moment from "moment";
 import { Column, TableComponent } from "../../components/Table";
@@ -17,14 +16,11 @@ export const GeralLogsPage: React.FC = (): JSX.Element => {
   const { socket } = useContext(SocketContext);
   const [logs, setLogs] = useState<Log[]>([]);
   const [load, setLoad] = useState<boolean>(false);
-  const [cookies] = useCookies(["auth_root"]);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/root/geral-logs", {
-          headers: { Authorization: cookies.auth_root },
-        });
+        const { data } = await api.get("/root/geral-logs");
         setLogs(data.logs);
         setLoad(true);
       } catch (error) {
