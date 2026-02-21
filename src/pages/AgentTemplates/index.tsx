@@ -2,11 +2,14 @@ import {
   ClipboardEvent,
   ClipboardEventHandler,
   JSX,
+  useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import ReactMarkdown from "react-markdown";
-import Editor, { Monaco } from "@monaco-editor/react";
+import Editor, { Monaco, OnMount } from "@monaco-editor/react";
+import * as monaco from "monaco-editor";
 import TextareaAutosize from "react-textarea-autosize";
 import { Field } from "../../components/ui/field";
 import { Button, Input, TagsInput } from "@chakra-ui/react";
@@ -33,6 +36,7 @@ import { z } from "zod";
 import { api } from "../../services/api";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import DOMPurify from "dompurify";
 
 const options_type_input = [
   { label: "Text", value: "text" },
@@ -94,24 +98,52 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
     register("markdown_desc");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const markdown_desc = watch("markdown_desc");
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof monaco | null>(null);
 
-  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData.items;
-
-    for (const item of items) {
-      if (item.type.indexOf("image") !== -1) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (file) await uploadImage(file);
-      }
-    }
+  const insertAtCursor = (value: string) => {
+    const editor = editorRef.current;
+    const mon = monacoRef.current;
+    if (!editor || !mon) return;
+    const sel = editor.getSelection();
+    if (!sel) return;
+    editor.executeEdits(
+      "insert-image",
+      [
+        {
+          range: new mon.Range(
+            sel.startLineNumber,
+            sel.startColumn,
+            sel.endLineNumber,
+            sel.endColumn,
+          ),
+          text: value,
+          forceMoveMarkers: true,
+        },
+      ],
+      // cursor state after edit: place at end of inserted text
+      [
+        {
+          identifier: "insert-image-cursor",
+          range: new mon.Range(
+            sel.startLineNumber,
+            sel.startColumn + value.length,
+            sel.startLineNumber,
+            sel.startColumn + value.length,
+          ),
+        } as any,
+      ],
+    );
+    const newText = editor.getModel()?.getValue() ?? "";
+    setValue("markdown_desc", newText);
+    return newText;
   };
 
   const uploadImage = async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
 
-    const tempTag = "[Enviando imagem...]";
+    const tempTag = "<!-- Enviando imagem... -->";
     const newValue = insertAtCursor(tempTag);
     if (!newValue) return;
 
@@ -119,29 +151,66 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
       const { data } = await api.post("/root/upload-image", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setValue(
-        "markdown_desc",
-        newValue.replace(
-          tempTag,
-          `![Imagem](${api.getUri() + "/public/storage/" + data.image.fileName})`,
-        ),
-      );
+
+      const imageUrl = `${api.getUri()}/public/storage/${data.image.fileName}`;
+      const imgTag = `
+<img
+  src="${imageUrl}"
+  alt="Imagem"
+  loading="lazy"
+  decoding="async"
+  style="max-width:100%;height:auto;display:block;"
+/>`.trim();
+
+      const final = newValue.replace(tempTag, imgTag);
+      setValue("markdown_desc", final);
+      editorRef.current?.setValue(final);
     } catch (error) {
-      setValue("markdown_desc", newValue.replace(tempTag, "[Erro no upload]"));
+      const final = newValue.replace(tempTag, "<!-- Erro no upload -->");
+      setValue("markdown_desc", final);
+      editorRef.current?.setValue(final);
     }
   };
 
-  const insertAtCursor = (value: string) => {
-    if (textareaRef.current) {
-      const { selectionStart, selectionEnd } = textareaRef.current;
-      const newText =
-        markdown_desc.substring(0, selectionStart) +
-        value +
-        markdown_desc.substring(selectionEnd);
-      setValue("markdown_desc", newText);
-      return newText;
-    }
+  const handleEditorMount: OnMount = (editor, mon) => {
+    editorRef.current = editor;
+    monacoRef.current = mon;
   };
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const editor = editorRef.current;
+      console.log("1");
+      if (!editor) return;
+      console.log("2");
+
+      // só intercepta se o editor estiver focado
+      if (!editor.hasTextFocus()) return;
+      console.log("3");
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      console.log("4");
+
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+
+          const file = item.getAsFile();
+          if (file) {
+            await uploadImage(file);
+          }
+
+          return; // impede paste padrão
+        }
+      }
+    };
+
+    // @ts-expect-error
+    document.addEventListener("paste", handlePaste, true);
+    // @ts-expect-error
+    return () => document.removeEventListener("paste", handlePaste, true);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -163,18 +232,6 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
 
     setSections(newItems);
   };
-
-  // async function submit(e: ChangeEvent<HTMLFormElement>) {
-  //   e.preventDefault();
-  //   try {
-  //     await api.put("/root/account-to-premium", { email });
-  //     alert("Conta atualiza com sucesso!");
-  //   } catch (error) {
-  //     if (error instanceof AxiosError) {
-  //       alert(error.response?.data.message);
-  //     }
-  //   }
-  // }
 
   const handleEditorWillMount = (monaco: Monaco) => {
     const libSource = `
@@ -215,6 +272,10 @@ declare function runner(props: RunnerProps): Promise<void>
     });
   };
 
+  const safeHtml = useMemo(() => {
+    return DOMPurify.sanitize(markdown_desc || "");
+  }, [markdown_desc]);
+
   return (
     <div className="min-h-screen bg-gray-100 p-8 flex flex-col gap-8">
       <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-8">
@@ -235,7 +296,7 @@ declare function runner(props: RunnerProps): Promise<void>
           </Field>
           <Field label="Descrição em Markdown" required>
             <div className="w-full grid grid-cols-2 gap-x-2">
-              <TextareaAutosize
+              {/* <TextareaAutosize
                 style={{ resize: "none" }}
                 minRows={3}
                 maxRows={10}
@@ -246,13 +307,52 @@ declare function runner(props: RunnerProps): Promise<void>
                   refMarkdownDesc(e);
                   textareaRef.current = e;
                 }}
+              /> */}
+              <Controller
+                control={control}
+                name={"markdown_desc"}
+                defaultValue={""}
+                render={({ field }) => (
+                  <Editor
+                    height="300px"
+                    defaultLanguage="html"
+                    theme="vs-dark"
+                    value={field.value}
+                    beforeMount={handleEditorWillMount}
+                    onMount={handleEditorMount}
+                    onChange={(val) => {
+                      field.onChange(val ?? "");
+                      setValue("markdown_desc", val ?? "");
+                    }}
+                    options={{
+                      automaticLayout: true,
+                      minimap: { enabled: false },
+                      scrollbar: { alwaysConsumeMouseWheel: false },
+
+                      // autocomplete
+                      quickSuggestions: true,
+                      suggestOnTriggerCharacters: true,
+                      snippetSuggestions: "top",
+                      tabCompletion: "on",
+
+                      // auto close
+                      autoClosingBrackets: "always",
+                      autoClosingQuotes: "always",
+                      autoClosingOvertype: "always",
+
+                      // importante para HTML
+                      autoIndent: "full",
+                      formatOnType: true,
+                    }}
+                  />
+                )}
               />
               <div className="w-full border border-neutral-600">
                 <ReactMarkdown
                   rehypePlugins={[rehypeRaw]}
                   remarkPlugins={[remarkGfm]}
                 >
-                  {markdown_desc}
+                  {safeHtml}
                 </ReactMarkdown>
               </div>
             </div>
