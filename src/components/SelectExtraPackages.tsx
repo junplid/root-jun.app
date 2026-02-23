@@ -2,8 +2,7 @@ import { AxiosError } from "axios";
 import { Controller } from "react-hook-form";
 import Select from "react-select";
 
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
+import { JSX, useEffect, useState } from "react";
 import { api } from "../services/api";
 
 interface ISelectComponent {
@@ -22,16 +21,13 @@ export function SelectExtraPackagesComponent({
   isDisabled = false,
   ...props
 }: ISelectComponent): JSX.Element | null {
-  const [cookies] = useCookies(["auth_root"]);
   const [list, setList] = useState<IOptions[]>([]);
   const [load, setLoad] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get(`/root/extra-packages-options`, {
-          headers: { Authorization: cookies.auth_root },
-        });
+        const { data } = await api.get(`/root/extra-packages-options`);
         setList(data.extras.map((c: any) => ({ value: c.id, label: c.name })));
         setLoad(true);
       } catch (error) {
@@ -61,7 +57,7 @@ export function SelectExtraPackagesComponent({
             isDisabled={isDisabled}
             isLoading={!load}
             defaultValue={list.filter((c) =>
-              props.defaultValue?.some((s) => s === c.value)
+              props.defaultValue?.some((s) => s === c.value),
             )}
             placeholder={!load ? "Carregando..." : "Selecione"}
             onChange={(propsV) => onChange(propsV.map((s) => s.value))}

@@ -1,3 +1,4 @@
+import { JSX } from "react";
 import LineChart from "../../components/Charts/Line";
 import { BsCalendarWeek } from "react-icons/bs";
 

@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, JSX, useState } from "react";
 import { api } from "../../services/api";
 import { AxiosError } from "axios";
 
@@ -6,7 +6,7 @@ export const FlowsPage: React.FC = (): JSX.Element => {
   const [email, setEmail] = useState("");
   const [data, setData] = useState("");
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: ChangeEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
       await api.post("/root/append-flow", { email, data });

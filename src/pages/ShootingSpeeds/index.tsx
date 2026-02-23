@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { JSX, useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api";
 import { calculateDailyShots } from "../../utils/calculateDailyShots";
 

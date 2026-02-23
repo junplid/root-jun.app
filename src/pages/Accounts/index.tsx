@@ -1,11 +1,11 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, JSX, useState } from "react";
 import { api } from "../../services/api";
 import { AxiosError } from "axios";
 
 export const AccountsPage: React.FC = (): JSX.Element => {
   const [email, setEmail] = useState("");
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: ChangeEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
       await api.put("/root/account-to-premium", { email });

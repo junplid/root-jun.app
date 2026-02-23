@@ -2,8 +2,7 @@ import { AxiosError } from "axios";
 import { Controller } from "react-hook-form";
 import Select from "react-select";
 
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
+import { JSX, useEffect, useState } from "react";
 import { api } from "../services/api";
 
 interface ISelectComponent {
@@ -22,16 +21,13 @@ export function SelectCouponComponent({
   isDisabled = false,
   ...props
 }: ISelectComponent): JSX.Element | null {
-  const [cookies] = useCookies(["auth_root"]);
   const [list, setList] = useState<IOptions[]>([]);
   const [load, setLoad] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get(`/root/coupons-options`, {
-          headers: { Authorization: cookies.auth_root },
-        });
+        const { data } = await api.get(`/root/coupons-options`);
         setList(data.coupons.map((c: any) => ({ value: c.id, label: c.name })));
         setLoad(true);
       } catch (error) {

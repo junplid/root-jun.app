@@ -1,20 +1,19 @@
 import {
   ClipboardEvent,
-  ClipboardEventHandler,
   JSX,
+  useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import ReactMarkdown from "react-markdown";
 import Editor, { Monaco, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import TextareaAutosize from "react-textarea-autosize";
 import { Field } from "../../components/ui/field";
-import { Button, Input, TagsInput } from "@chakra-ui/react";
+import { Button, Checkbox, Input, TagsInput } from "@chakra-ui/react";
 import { SortableItem } from "./SortableItems";
-import { v4 } from "uuid";
 import {
   closestCenter,
   DndContext,
@@ -24,68 +23,75 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { MdDeleteOutline } from "react-icons/md";
-import SelectComponent from "../../components/Select";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { api } from "../../services/api";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import DOMPurify from "dompurify";
+import DigitizingChatComponent from "../../components/DigitizingChat";
+import { SectionInputs } from "./section-inputs";
+import { AxiosError } from "axios";
+import { AuthorizationContext } from "../../contexts/authorization.context";
+import { ErrorResponse_I } from "../../services/ErrorResponse";
+import { toaster } from "../../components/ui/toaster";
 
-const options_type_input = [
-  { label: "Text", value: "text" },
-  { label: "Number", value: "number" },
-  { label: "Textarea", value: "textarea" },
-  { label: "Seletor", value: "select" },
-  { label: "Seletor de Variaveis", value: "select_variables" },
-  { label: "Seletor de Variavel", value: "select_variable" },
-];
+const InputTypeSectionEnum = z.enum(
+  [
+    "text",
+    "number",
+    "select",
+    "select_variables",
+    "select_variable",
+    "textarea",
+  ],
+  { error: "O tipo é obrigatório." },
+);
+
+const InputItemSectionSchema = z.object({
+  name: z.string().min(1, "Campo obrigatório."),
+  label: z.string().min(1, "Campo obrigatório."),
+  placeholder: z.string().optional(),
+  defaultValue: z.string().optional(),
+  helperText: z.string().optional(),
+  required: z.boolean().optional(),
+  type: InputTypeSectionEnum,
+});
+
+const SectionSchema = z.object({
+  name: z.string().min(1, "O nome da seção é obrigatório."),
+  title: z.string().min(1, "O título da seção é obrigatório."),
+  collapsible: z.boolean().optional(),
+  desc: z.string().optional(),
+  inputs: z.array(InputItemSectionSchema),
+});
 
 const FormSchema = z.object({
   title: z.string().min(1, "Campo obrigatório."),
   card_desc: z.string().min(1, "Campo obrigatório."),
   markdown_desc: z.string().min(1, "Campo obrigatório."),
+  chat_demo: z.string().min(1, "Campo obrigatório."),
+  variables: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  config_flow: z.string().min(1, "Campo obrigatório."),
+  script_runner: z.string().min(1, "Campo obrigatório."),
+  script_build_agentai_for_test: z.string().min(1, "Campo obrigatório."),
+  sections: z.array(SectionSchema),
 });
-type Fields = z.infer<typeof FormSchema>;
+export type Fields = z.infer<typeof FormSchema>;
 
 export const AgentTemplatesPage: React.FC = (): JSX.Element => {
-  const [tab, setTab] = useState("write");
-  const [sections, setSections] = useState<
-    {
-      name: string;
-      title: string;
-      desc?: string;
-      hash: string;
-      inputs: {
-        name?: string;
-        placeholder?: string;
-        defaultValue?: string;
-        helperText?: string;
-        required?: boolean;
-        hash: string;
-        type?:
-          | "text"
-          | "number"
-          | "select"
-          | "select_variables"
-          | "select_variable"
-          | "textarea";
-      }[];
-    }[]
-  >([]);
-
+  const {} = useContext(AuthorizationContext);
   const {
     handleSubmit,
     register,
     control,
     formState: { errors },
-    getValues,
     setValue,
     setError,
     watch,
@@ -93,13 +99,25 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
   } = useForm<Fields>({
     resolver: zodResolver(FormSchema),
     mode: "onSubmit",
+    defaultValues: {
+      tags: [],
+      variables: [],
+      sections: [],
+    },
   });
-  const { ref: refMarkdownDesc, ...resgiterMarkdownDesc } =
-    register("markdown_desc");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const markdown_desc = watch("markdown_desc");
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof monaco | null>(null);
+
+  const {
+    fields: sectionFields,
+    append,
+    remove,
+    move,
+  } = useFieldArray({
+    control,
+    name: "sections",
+  });
 
   const insertAtCursor = (value: string) => {
     const editor = editorRef.current;
@@ -180,28 +198,16 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const editor = editorRef.current;
-      console.log("1");
       if (!editor) return;
-      console.log("2");
-
-      // só intercepta se o editor estiver focado
       if (!editor.hasTextFocus()) return;
-      console.log("3");
-
       const items = e.clipboardData?.items;
       if (!items) return;
-      console.log("4");
-
       for (const item of Array.from(items)) {
         if (item.type.startsWith("image/")) {
           e.preventDefault();
-
           const file = item.getAsFile();
-          if (file) {
-            await uploadImage(file);
-          }
-
-          return; // impede paste padrão
+          if (file) await uploadImage(file);
+          return;
         }
       }
     };
@@ -225,12 +231,10 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
 
     if (!over || active.id === over.id) return;
 
-    const oldIndex = sections.findIndex((i) => i.hash === active.id);
-    const newIndex = sections.findIndex((i) => i.hash === over.id);
+    const oldIndex = sectionFields.findIndex((i) => i.id === active.id);
+    const newIndex = sectionFields.findIndex((i) => i.id === over.id);
 
-    const newItems = arrayMove(sections, oldIndex, newIndex);
-
-    setSections(newItems);
+    move(oldIndex, newIndex);
   };
 
   const handleEditorWillMount = (monaco: Monaco) => {
@@ -241,7 +245,6 @@ interface RunnerProps {
   db: { 
     createAgentAI: (agent: CreateAgentAIDTO_I) => Promise<{ status: number; agentAI: { businesses: { id: number; name: string; }[]; createAt: Date; id: number; }; }>;
   };
-  current_runner_index: number;
   sections_inputs: Record<string, Record<string, number | string>>;
   AgentTemplate: {
     id: number;
@@ -254,8 +257,31 @@ interface RunnerProps {
     tagsId: number[];
   }
 }
-declare function runner(props: RunnerProps): Promise<void>
-    `;
+interface RunnerAgentTestProps {
+  sections_inputs: Record<string, Record<string, number | string>>;
+}
+declare function runner(props: RunnerProps): Promise<void>;
+
+type TypeEmojiLevel = "none" | "low" | "medium" | "high";
+type TypeServiceTier = "default" | "flex" | "auto" | "scale" | "priority";
+
+interface ReturnRunnerAgentTest {
+  name: string;
+  personality?: string;
+  vectorStoreId?: string;
+  knowledgeBase?: string;
+  instructions?: string;
+  timeout: number;
+  emojiLevel: TypeEmojiLevel;
+  model: string;
+  temperature: number;
+  debounce: number;
+  service_tier?: TypeServiceTier;
+  modelTranscription?: string;
+}
+
+declare function runner_agent_test(props: RunnerAgentTestProps): ReturnRunnerAgentTest;
+`;
     const libUri = "ts:filename/agent-api.d.ts";
 
     monaco.languages.typescript.typescriptDefaults.addExtraLib(
@@ -276,38 +302,121 @@ declare function runner(props: RunnerProps): Promise<void>
     return DOMPurify.sanitize(markdown_desc || "");
   }, [markdown_desc]);
 
+  const submit = useCallback(async (fields: Fields) => {
+    try {
+      await api.post("/root/template-agents", fields);
+      reset({});
+      toaster.create({
+        title: "Sucesso",
+        description: "Template criado",
+        type: "success",
+      });
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 401) alert("Não autorizado!");
+        if (error.response?.status === 400) {
+          const dataError = error.response?.data as ErrorResponse_I;
+          if (dataError.input.length) {
+            dataError.input.forEach(({ text, path }) => {
+              // @ts-expect-error
+              setError(path, { message: text });
+            });
+          }
+        }
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100 p-8 flex flex-col gap-8">
       <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-8">
         Templates de agentes
       </h2>
 
-      <div className="flex flex-col">
+      <form onSubmit={handleSubmit(submit)} className="flex flex-col">
         <h3 className="text-xl font-extrabold text-gray-900 tracking-tight mb-8">
           Criar template
         </h3>
         <section className="flex mb-5 flex-col space-y-3 bg-neutral-200 p-4">
           <h4 className="pb-3 font-semibold">Configurações iniciais</h4>
-          <Field label="Titulo do template" required>
-            <Input className="bg-white!" />
+          <Field
+            invalid={!!errors.title}
+            errorText={errors.title?.message}
+            label="Titulo do template"
+            required
+          >
+            <Input className="bg-white!" {...register("title")} />
           </Field>
-          <Field label="Descrição do card" required>
-            <Input className="bg-white!" />
+          <Field
+            invalid={!!errors.card_desc}
+            errorText={errors.card_desc?.message}
+            label="Descrição do card"
+            required
+          >
+            <Input className="bg-white!" {...register("card_desc")} />
           </Field>
-          <Field label="Descrição em Markdown" required>
+          <Field
+            invalid={!!errors.chat_demo}
+            errorText={errors.chat_demo?.message}
+            label="Chat de demostração"
+          >
+            <Controller
+              control={control}
+              name={"chat_demo"}
+              defaultValue={""}
+              render={({ field }) => {
+                let safeValue: any = null;
+
+                try {
+                  safeValue = JSON.parse(field.value || "null");
+                } catch {
+                  safeValue = null; // ou valor padrão
+                }
+
+                return (
+                  <div className="w-full grid grid-cols-[1fr_384px] gap-x-2">
+                    <Editor
+                      height="300px"
+                      defaultLanguage="json"
+                      theme="vs-dark"
+                      value={field.value}
+                      onMount={handleEditorMount}
+                      onChange={(val) => {
+                        field.onChange(val ?? "");
+                        setValue("chat_demo", val ?? "");
+                      }}
+                      options={{
+                        automaticLayout: true,
+                        minimap: { enabled: false },
+                        scrollbar: { alwaysConsumeMouseWheel: false },
+                        quickSuggestions: true,
+                        suggestOnTriggerCharacters: true,
+                        snippetSuggestions: "top",
+                        tabCompletion: "on",
+                        autoClosingBrackets: "always",
+                        autoClosingQuotes: "always",
+                        autoClosingOvertype: "always",
+                        autoIndent: "full",
+                        formatOnType: true,
+                      }}
+                    />
+                    <div className="h-120">
+                      {safeValue && (
+                        <DigitizingChatComponent list={safeValue} />
+                      )}
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          </Field>
+          <Field
+            invalid={!!errors.markdown_desc}
+            errorText={errors.markdown_desc?.message}
+            label="Descrição em Markdown"
+            required
+          >
             <div className="w-full grid grid-cols-2 gap-x-2">
-              {/* <TextareaAutosize
-                style={{ resize: "none" }}
-                minRows={3}
-                maxRows={10}
-                className="p-3 py-2.5 rounded-sm w-full bg-white border-white/10 border"
-                onPaste={handlePaste}
-                {...resgiterMarkdownDesc}
-                ref={(e) => {
-                  refMarkdownDesc(e);
-                  textareaRef.current = e;
-                }}
-              /> */}
               <Controller
                 control={control}
                 name={"markdown_desc"}
@@ -318,29 +427,21 @@ declare function runner(props: RunnerProps): Promise<void>
                     defaultLanguage="html"
                     theme="vs-dark"
                     value={field.value}
-                    beforeMount={handleEditorWillMount}
                     onMount={handleEditorMount}
                     onChange={(val) => {
                       field.onChange(val ?? "");
-                      setValue("markdown_desc", val ?? "");
                     }}
                     options={{
                       automaticLayout: true,
                       minimap: { enabled: false },
                       scrollbar: { alwaysConsumeMouseWheel: false },
-
-                      // autocomplete
                       quickSuggestions: true,
                       suggestOnTriggerCharacters: true,
                       snippetSuggestions: "top",
                       tabCompletion: "on",
-
-                      // auto close
                       autoClosingBrackets: "always",
                       autoClosingQuotes: "always",
                       autoClosingOvertype: "always",
-
-                      // importante para HTML
                       autoIndent: "full",
                       formatOnType: true,
                     }}
@@ -357,46 +458,90 @@ declare function runner(props: RunnerProps): Promise<void>
               </div>
             </div>
           </Field>
-          <Field label="Construtor de fluxo" required>
-            <TextareaAutosize
-              style={{ resize: "none" }}
-              minRows={3}
-              maxRows={10}
-              className="p-3 py-2.5 rounded-sm w-full bg-white border-white/10 border"
-            />
-          </Field>
           <div className="flex gap-x-3">
-            <TagsInput.Root
-            // value={tags}
-            // onValueChange={(details) => setTags(details.value)}
-            >
-              <TagsInput.Label>Variaveis</TagsInput.Label>
-              <TagsInput.Control>
-                <TagsInput.Items />
-                <TagsInput.Input placeholder="Add variavel..." />
-              </TagsInput.Control>
-            </TagsInput.Root>
-            <TagsInput.Root>
-              <TagsInput.Label>Tags</TagsInput.Label>
-              <TagsInput.Control>
-                <TagsInput.Items />
-                <TagsInput.Input placeholder="Add tag..." />
-              </TagsInput.Control>
-            </TagsInput.Root>
+            <Controller
+              control={control}
+              name="variables"
+              render={({ field: { value, onChange, ...rest }, fieldState }) => (
+                <TagsInput.Root
+                  value={value}
+                  onValueChange={(details) => onChange(details.value)}
+                  {...rest}
+                  invalid={!!fieldState.error}
+                >
+                  <TagsInput.Label>
+                    {"$vars.[x: number].name ou $vars.[x: number].id"}
+                  </TagsInput.Label>
+                  <TagsInput.Control>
+                    <TagsInput.Items />
+                    <TagsInput.Input placeholder="Add variavel..." />
+                  </TagsInput.Control>
+                </TagsInput.Root>
+              )}
+            />
+            <Controller
+              control={control}
+              name="tags"
+              render={({ field: { value, onChange, ...rest }, fieldState }) => (
+                <TagsInput.Root
+                  value={value}
+                  onValueChange={(details) => onChange(details.value)}
+                  {...rest}
+                  invalid={!!fieldState.error}
+                >
+                  <TagsInput.Label>
+                    {"$tags.[x: number].name ou $tags.[x: number].id"}
+                  </TagsInput.Label>
+                  <TagsInput.Control>
+                    <TagsInput.Items />
+                    <TagsInput.Input placeholder="Add tag..." />
+                  </TagsInput.Control>
+                </TagsInput.Root>
+              )}
+            />
           </div>
+          <Controller
+            control={control}
+            name="config_flow"
+            render={({ field: { value, onChange, ...rest }, fieldState }) => (
+              <Field
+                invalid={!!fieldState.error}
+                errorText={fieldState.error?.message}
+                {...rest}
+                label="Construtor de fluxo"
+                required
+              >
+                <Editor
+                  height="300px"
+                  defaultLanguage="json"
+                  theme="vs-dark"
+                  defaultValue={`{
+  "nome_da_variavel_1": "$vars.[0].name",
+  "id_da_variavel_1": "$vars.[0].id"
+}`}
+                  onChange={(val) => {
+                    onChange(val ?? "");
+                  }}
+                  value={value}
+                  options={{
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                  }}
+                />
+              </Field>
+            )}
+          />
         </section>
 
         <div className="flex flex-col mb-5 space-y-3 bg-neutral-200 p-4">
           <div className="flex gap-x-2 pb-3 items-center">
             <h4 className="font-semibold">Seções de entrada</h4>
             <Button
+              type="button"
               colorPalette={"green"}
               size={"sm"}
               onClick={() => {
-                setSections((s) => [
-                  ...s,
-                  { name: "", title: "", hash: v4(), inputs: [] },
-                ]);
+                append({ inputs: [], name: "", title: "" });
               }}
             >
               Adicionar
@@ -409,162 +554,111 @@ declare function runner(props: RunnerProps): Promise<void>
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={sections.map((i) => i.hash)}
+                items={sectionFields.map((i) => i.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
-                  {sections.map((item) => (
-                    <SortableItem key={item.hash} id={item.hash}>
-                      <div className="flex gap-x-2 w-full p-4 bg-neutral-300">
-                        <div className="flex flex-1 flex-col gap-y-2">
-                          <div className="grid grid-cols-[220px_1fr] gap-x-3">
-                            <Field
-                              label="NAME unique"
-                              helperText="props.sections_inputs.$NAME"
-                              required
-                            >
-                              <Input className="bg-white!" />
-                            </Field>
-                            <Field label="Titulo" required>
-                              <Input className="bg-white!" />
-                            </Field>
-                          </div>
-                          <Field label="Descrição" required>
-                            <TextareaAutosize
-                              style={{ resize: "none" }}
-                              minRows={3}
-                              maxRows={10}
-                              className="p-3 py-2.5 rounded-sm w-full bg-white border-black/10 border"
-                            />
-                          </Field>
-
-                          <div className="mt-4 flex flex-col space-y-3 bg-neutral-400 p-4">
-                            <div className="pb-3 flex gap-x-2">
-                              <h5 className="font-semibold">Inputs</h5>
-                              <Button
-                                colorPalette={"green"}
-                                size={"sm"}
-                                onClick={() => {
-                                  setSections((s) =>
-                                    s.map((sec) => {
-                                      if (sec.hash === item.hash) {
-                                        sec.inputs.push({
-                                          hash: v4(),
-                                        });
-                                      }
-                                      return sec;
-                                    }),
-                                  );
-                                }}
+                  {sectionFields.map((item, index) => {
+                    return (
+                      <SortableItem key={item.id} id={item.id}>
+                        <div className="flex gap-x-2 w-full p-4 bg-neutral-300">
+                          <div className="flex flex-1 flex-col gap-y-2">
+                            <div className="grid grid-cols-[140px_220px_1fr] gap-x-3">
+                              <Controller
+                                control={control}
+                                name={`sections.${index}.collapsible`}
+                                render={({ field, fieldState }) => (
+                                  <Checkbox.Root
+                                    checked={!!field.value}
+                                    onCheckedChange={(e) =>
+                                      field.onChange(!!e.checked)
+                                    }
+                                    variant={"subtle"}
+                                    colorPalette={"yellow"}
+                                    invalid={!!fieldState.error}
+                                  >
+                                    <Checkbox.HiddenInput />
+                                    <Checkbox.Control />
+                                    <Checkbox.Label>
+                                      Configurações avançadas
+                                    </Checkbox.Label>
+                                  </Checkbox.Root>
+                                )}
+                              />
+                              <Field
+                                label="NAME unique"
+                                helperText={`props.sections_inputs.$NAME`}
+                                required
+                                invalid={!!errors.sections?.[index]?.name}
+                                errorText={
+                                  errors.sections?.[index]?.name?.message
+                                }
                               >
-                                Adicionar
-                              </Button>
+                                <Input
+                                  {...register(`sections.${index}.name`)}
+                                  className="bg-white!"
+                                />
+                              </Field>
+                              <Field
+                                invalid={!!errors.sections?.[index]?.title}
+                                errorText={
+                                  errors.sections?.[index]?.title?.message
+                                }
+                                label="Titulo"
+                                required
+                              >
+                                <Input
+                                  {...register(`sections.${index}.title`)}
+                                  className="bg-white!"
+                                />
+                              </Field>
                             </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 8,
-                              }}
+                            <Field
+                              invalid={!!errors.sections?.[index]?.desc}
+                              errorText={
+                                errors.sections?.[index]?.desc?.message
+                              }
+                              label="Descrição"
                             >
-                              {item.inputs.map((input) => (
-                                <div className="bg-white p-4 flex flex-col gap-y-3">
-                                  <div className="grid grid-cols-[220px_1fr] gap-x-3">
-                                    <Field
-                                      label="INPUT_NAME"
-                                      helperText="props.sections_inputs.$NAME.$INPUT_NAME"
-                                      required
-                                    >
-                                      <Input className="bg-white!" />
-                                    </Field>
-                                    <Field label="Help text" required>
-                                      <Input className="bg-white!" />
-                                    </Field>
-                                  </div>
-                                  <Field label="Valor inicial" required>
-                                    <Input className="bg-white!" />
-                                  </Field>
-                                  <Field label="Placeholder" required>
-                                    <Input className="bg-white!" />
-                                  </Field>
-                                  <Field label="Placeholder" required>
-                                    <SelectComponent
-                                      isMulti={false}
-                                      onChange={(e: any) => {
-                                        setSections((secs) =>
-                                          secs.map((sec) => ({
-                                            ...sec,
-                                            inputs: sec.inputs.map((inp) => {
-                                              if (inp.hash === input.hash) {
-                                                inp.type = e.value;
-                                              }
-                                              return inp;
-                                            }),
-                                          })),
-                                        );
-                                      }}
-                                      isClearable={false}
-                                      isSearchable={false}
-                                      options={options_type_input}
-                                      value={
-                                        options_type_input.find(
-                                          (xx) => xx.value === input.type,
-                                        ) || null
-                                      }
-                                      placeholder="Selecione o tipo"
-                                    />
-                                  </Field>
+                              <TextareaAutosize
+                                style={{ resize: "none" }}
+                                minRows={3}
+                                maxRows={10}
+                                {...register(`sections.${index}.desc`)}
+                                className="p-3 py-2.5 rounded-sm w-full bg-white border-black/10 border"
+                              />
+                            </Field>
 
-                                  <div className="flex justify-end">
-                                    <a
-                                      onClick={() => {
-                                        setSections((secs) =>
-                                          secs.map((sec) => ({
-                                            ...sec,
-                                            inputs: sec.inputs.filter(
-                                              (inp) => inp.hash !== input.hash,
-                                            ),
-                                          })),
-                                        );
-                                      }}
-                                      className="underline text-sm text-red-400 cursor-pointer"
-                                    >
-                                      Remover input
-                                    </a>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            <SectionInputs
+                              control={control}
+                              nestIndex={index}
+                              key={item.id}
+                            />
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => remove(index)}
+                            className="bg-red-400 rounded-lg border-red-500 border cursor-pointer px-3 text-white"
+                          >
+                            <MdDeleteOutline />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => {
-                            setSections((s) =>
-                              s.filter((d) => d.hash !== item.hash),
-                            );
-                          }}
-                          className="bg-red-400 rounded-lg border-red-500 border cursor-pointer px-3 text-white"
-                        >
-                          <MdDeleteOutline />
-                        </button>
-                      </div>
-                    </SortableItem>
-                  ))}
+                      </SortableItem>
+                    );
+                  })}
                 </div>
               </SortableContext>
             </DndContext>
           </div>
           <Button
+            type="button"
             colorPalette={"green"}
             size={"sm"}
-            onClick={() =>
-              setSections((s) => [
-                ...s,
-                { name: "", title: "", hash: v4(), inputs: [] },
-              ])
-            }
+            onClick={() => {
+              append({ inputs: [], name: "", title: "" });
+            }}
           >
             Adicionar
           </Button>
@@ -573,21 +667,73 @@ declare function runner(props: RunnerProps): Promise<void>
         <section className="flex mb-5 flex-col space-y-3 bg-neutral-200 p-4">
           <h4 className="pb-3 font-semibold">Script runner</h4>
 
-          <Editor
-            height="300px"
-            defaultLanguage="typescript"
-            theme="vs-dark"
-            defaultValue="async function runner(props: RunnerProps) {
-    //
-}"
-            beforeMount={handleEditorWillMount}
-            options={{
-              automaticLayout: true,
-              minimap: { enabled: false },
-            }}
+          <Controller
+            control={control}
+            name="script_runner"
+            render={({ field: { value, onChange }, fieldState }) => (
+              <Field
+                invalid={!!fieldState.error}
+                errorText={fieldState.error?.message}
+              >
+                <Editor
+                  height="300px"
+                  defaultLanguage="typescript"
+                  theme="vs-dark"
+                  defaultValue="async function runner(props: RunnerProps) {
+      //
+  }"
+                  onChange={(val) => {
+                    onChange(val ?? "");
+                  }}
+                  value={value}
+                  beforeMount={handleEditorWillMount}
+                  options={{
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                  }}
+                />
+              </Field>
+            )}
           />
         </section>
-      </div>
+
+        <section className="flex mb-5 flex-col space-y-3 bg-neutral-200 p-4">
+          <h4 className="pb-3 font-semibold">Script AGENTE TESTE runner</h4>
+
+          <Controller
+            control={control}
+            name="script_build_agentai_for_test"
+            render={({ field: { value, onChange }, fieldState }) => (
+              <Field
+                invalid={!!fieldState.error}
+                errorText={fieldState.error?.message}
+              >
+                <Editor
+                  height="300px"
+                  defaultLanguage="typescript"
+                  theme="vs-dark"
+                  defaultValue="function runner_agent_test(props: RunnerAgentTestProps): ReturnRunnerAgentTest {
+      //
+}"
+                  onChange={(val) => {
+                    onChange(val ?? "");
+                  }}
+                  value={value}
+                  beforeMount={handleEditorWillMount}
+                  options={{
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                  }}
+                />
+              </Field>
+            )}
+          />
+        </section>
+
+        <Button type="submit" colorPalette={"green"} size={"sm"}>
+          Criar template
+        </Button>
+      </form>
     </div>
   );
 };
