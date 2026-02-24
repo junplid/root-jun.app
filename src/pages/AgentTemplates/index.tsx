@@ -42,14 +42,7 @@ import { ErrorResponse_I } from "../../services/ErrorResponse";
 import { toaster } from "../../components/ui/toaster";
 
 const InputTypeSectionEnum = z.enum(
-  [
-    "text",
-    "number",
-    "select",
-    "select_variables",
-    "select_variable",
-    "textarea",
-  ],
+  ["text", "tags-input", "number", "select", "textarea"],
   { error: "O tipo é obrigatório." },
 );
 
@@ -60,6 +53,12 @@ const InputItemSectionSchema = z.object({
   defaultValue: z.string().optional(),
   helperText: z.string().optional(),
   required: z.boolean().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  isSearchable: z.boolean().optional(),
+  isMulti: z.boolean().optional(),
+  isClearable: z.boolean().optional(),
+  options: z.array(z.string()).optional(),
   type: InputTypeSectionEnum,
 });
 

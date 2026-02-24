@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { Control, Controller, useFieldArray, useWatch } from "react-hook-form";
 import { Fields } from ".";
-import { Button, Checkbox, Input } from "@chakra-ui/react";
+import { Button, Checkbox, Input, TagsInput } from "@chakra-ui/react";
 import { Field } from "../../components/ui/field";
 import SelectComponent from "../../components/Select";
 
@@ -14,10 +14,151 @@ const options_type_input = [
   { label: "Text", value: "text" },
   { label: "Number", value: "number" },
   { label: "Textarea", value: "textarea" },
-  { label: "Seletor", value: "select" },
-  { label: "Seletor de Variaveis", value: "select_variables" },
-  { label: "Seletor de Variavel", value: "select_variable" },
+  { label: "Seletor puro", value: "select" },
+  { label: "Tags Inpuy", value: "tags-input" },
 ];
+
+function InputsTagsInput({
+  index,
+  nestIndex,
+  control,
+}: {
+  nestIndex: number;
+  index: number;
+  control: Control<Fields>;
+}) {
+  const inputType = useWatch({
+    control,
+    name: `sections.${nestIndex}.inputs.${index}.type`,
+  });
+
+  if (inputType !== "tags-input") return null;
+
+  return (
+    <div className="flex gap-x-3">
+      <Controller
+        name={`sections.${nestIndex}.inputs.${index}.min`}
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field
+            label="Minimo"
+            invalid={!!fieldState.error}
+            errorText={fieldState.error?.message}
+            required
+          >
+            <Input type="number" {...field} className="bg-white!" />
+          </Field>
+        )}
+      />
+      <Controller
+        name={`sections.${nestIndex}.inputs.${index}.max`}
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field
+            label="Maximo"
+            invalid={!!fieldState.error}
+            errorText={fieldState.error?.message}
+            required
+          >
+            <Input type="number" {...field} className="bg-white!" />
+          </Field>
+        )}
+      />
+    </div>
+  );
+}
+
+function SelectorInput({
+  index,
+  nestIndex,
+  control,
+}: {
+  nestIndex: number;
+  index: number;
+  control: Control<Fields>;
+}) {
+  const inputType = useWatch({
+    control,
+    name: `sections.${nestIndex}.inputs.${index}.type`,
+  });
+
+  if (inputType !== "select") return null;
+
+  return (
+    <>
+      <div className="flex gap-x-3">
+        <Controller
+          control={control}
+          name={`sections.${nestIndex}.inputs.${index}.isMulti`}
+          render={({ field, fieldState }) => (
+            <Checkbox.Root
+              checked={!!field.value}
+              onCheckedChange={(e) => field.onChange(!!e.checked)}
+              variant={"subtle"}
+              colorPalette={"yellow"}
+              invalid={!!fieldState.error}
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label>Multiplas seleções?</Checkbox.Label>
+            </Checkbox.Root>
+          )}
+        />
+        <Controller
+          control={control}
+          name={`sections.${nestIndex}.inputs.${index}.isClearable`}
+          render={({ field, fieldState }) => (
+            <Checkbox.Root
+              checked={!!field.value}
+              onCheckedChange={(e) => field.onChange(!!e.checked)}
+              variant={"subtle"}
+              colorPalette={"yellow"}
+              invalid={!!fieldState.error}
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label>É limpavel?</Checkbox.Label>
+            </Checkbox.Root>
+          )}
+        />
+        <Controller
+          control={control}
+          name={`sections.${nestIndex}.inputs.${index}.isSearchable`}
+          render={({ field, fieldState }) => (
+            <Checkbox.Root
+              checked={!!field.value}
+              onCheckedChange={(e) => field.onChange(!!e.checked)}
+              variant={"subtle"}
+              colorPalette={"yellow"}
+              invalid={!!fieldState.error}
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label>É buscavel</Checkbox.Label>
+            </Checkbox.Root>
+          )}
+        />
+      </div>
+      <Controller
+        control={control}
+        name={`sections.${nestIndex}.inputs.${index}.options`}
+        render={({ field: { value, onChange, ...rest }, fieldState }) => (
+          <TagsInput.Root
+            onValueChange={(details) => onChange(details.value)}
+            {...rest}
+            invalid={!!fieldState.error}
+          >
+            <TagsInput.Label>{"Opções"}</TagsInput.Label>
+            <TagsInput.Control>
+              <TagsInput.Items />
+              <TagsInput.Input placeholder="Add opção..." />
+            </TagsInput.Control>
+          </TagsInput.Root>
+        )}
+      />
+    </>
+  );
+}
 
 export const SectionInputs = memo(
   ({ control, nestIndex }: SectionItemProps) => {
@@ -52,7 +193,7 @@ export const SectionInputs = memo(
             }
 
             return (
-              <div className="bg-white p-4 flex flex-col gap-y-3">
+              <div className="bg-white p-4 flex flex-col gap-y-3" key={_.id}>
                 <div className="grid grid-cols-[140px_220px_1fr] gap-x-3">
                   <Controller
                     control={control}
@@ -168,6 +309,20 @@ export const SectionInputs = memo(
                       />
                     </Field>
                   )}
+                />
+
+                <InputsTagsInput
+                  control={control}
+                  index={index}
+                  nestIndex={nestIndex}
+                  key={_.id}
+                />
+
+                <SelectorInput
+                  control={control}
+                  index={index}
+                  nestIndex={nestIndex}
+                  key={_.id}
                 />
 
                 <div className="flex justify-end">
