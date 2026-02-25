@@ -238,20 +238,21 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
 
   const handleEditorWillMount = (monaco: Monaco) => {
     const libSource = `
-interface CreateAgentAIDTO_I { providerCredentialId?: number; apiKey?: string; nameProvider?: string; name: string; emojiLevel?: "none" | "low" | "medium" | "high"; language?: string; personality?: string; model: string; temperature?: number; knowledgeBase?: string; files?: number[]; instructions?: string; timeout?: number; debounce?: number; service_tier?: TypeServiceTier; modelTranscription?: string; }
+interface CreateChatbotDTO_I {
+  TimeToRestart?: { value: number; type: "seconds" | "minutes" | "hours" | "days"; };
+  addToLeadTagsIds?: number[];
+  fallback?: string;
+  trigger?: string;
+  destLink?: string;
+}
+
 interface RunnerProps {
   accountId: number;
   db: { 
-    createAgentAI: (agent: CreateAgentAIDTO_I) => Promise<{ status: number; agentAI: { businesses: { id: number; name: string; }[]; createAt: Date; id: number; }; }>;
+    createChatbot: (data: CreateChatbotDTO_I) => Promise<void>;
   };
   sections_inputs: Record<string, Record<string, number | string>>;
   AgentTemplate: {
-    id: number;
-    title: string;
-    card_desc: string;
-    markdown_desc: string;
-    config_flow: string;
-    count_usage: number;
     variablesId: number[];
     tagsId: number[];
   }

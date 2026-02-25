@@ -44,7 +44,6 @@ function InputsTagsInput({
             label="Minimo"
             invalid={!!fieldState.error}
             errorText={fieldState.error?.message}
-            required
           >
             <Input type="number" {...field} className="bg-white!" />
           </Field>
@@ -58,7 +57,6 @@ function InputsTagsInput({
             label="Maximo"
             invalid={!!fieldState.error}
             errorText={fieldState.error?.message}
-            required
           >
             <Input type="number" {...field} className="bg-white!" />
           </Field>
