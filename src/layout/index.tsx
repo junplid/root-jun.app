@@ -3,6 +3,7 @@ import { HiMenu } from "react-icons/hi";
 import { FiLogOut, FiHome, FiUsers, FiTag } from "react-icons/fi";
 import { Menu, MenuItem, Sidebar } from "react-pro-sidebar";
 import { Link, Outlet, useLocation } from "react-router-dom";
+import { ImInsertTemplate } from "react-icons/im";
 
 export const AppLayout = memo(function AppLayout() {
   const [toggled, setToggled] = useState(false);
@@ -106,6 +107,18 @@ export const AppLayout = memo(function AppLayout() {
               }
             >
               Velocidade de disparos
+            </MenuItem>
+            <MenuItem
+              onClick={() => setToggled(false)}
+              component={<Link to={"/agent-templates"} />}
+              icon={<ImInsertTemplate size={18} />}
+              className={
+                isActive("/agent-templates")
+                  ? "bg-blue-50 text-blue-700 font-bold"
+                  : ""
+              }
+            >
+              Templates de agentes
             </MenuItem>
           </Menu>
         </Sidebar>

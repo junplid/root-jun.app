@@ -1,6 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@layer chakra {
+  /* Se o Chakra injetar estilos globais, eles ficam presos aqui */
+}
 
 * {
   font-family: sans-serif;

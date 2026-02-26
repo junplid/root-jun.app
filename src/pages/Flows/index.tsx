@@ -1,21 +1,15 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, JSX, useState } from "react";
 import { api } from "../../services/api";
 import { AxiosError } from "axios";
-import { useCookies } from "react-cookie";
 
 export const FlowsPage: React.FC = (): JSX.Element => {
   const [email, setEmail] = useState("");
   const [data, setData] = useState("");
-  const [cookies] = useCookies(["auth_root"]);
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: ChangeEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
-      await api.post(
-        "/root/append-flow",
-        { email, data },
-        { headers: { Authorization: cookies.auth_root } }
-      );
+      await api.post("/root/append-flow", { email, data });
       setData("");
       alert("Enviado com sucesso!");
     } catch (error) {

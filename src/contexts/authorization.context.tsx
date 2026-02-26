@@ -1,13 +1,13 @@
 import { AxiosError } from "axios";
 import {
   FC,
+  JSX,
   createContext,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import { useCookies } from "react-cookie";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 
@@ -26,7 +26,6 @@ interface PropsAuthorizationContextProvider_I {
 export const AuthorizationProvider: FC<PropsAuthorizationContextProvider_I> = ({
   children,
 }): JSX.Element => {
-  const [cookies] = useCookies(["auth_root"]);
   const navigate = useNavigate();
 
   // state local
@@ -39,8 +38,6 @@ export const AuthorizationProvider: FC<PropsAuthorizationContextProvider_I> = ({
 
   const verifyToken = useCallback(async () => {
     try {
-      const token = cookies.auth_root;
-      if (!token) return handleLogout();
       await api.get(`/root/verify-authorization`);
       setIsLoaded(true);
       setIsAuth(true);

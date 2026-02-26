@@ -1,6 +1,5 @@
 import { AxiosError } from "axios";
-import { FC, useCallback, useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
+import { FC, JSX, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../services/api";
 import { FiMail, FiLock } from "react-icons/fi";
@@ -11,7 +10,6 @@ interface PropsLogin {
 }
 
 export const LoginPage: FC = (): JSX.Element => {
-  const [_cookies, setCookies, removeCookie] = useCookies(["auth_root"]);
   const [load, setLoad] = useState<boolean>(false);
   const [s, setS] = useState<boolean>(false);
   const [fields, setFields] = useState<PropsLogin>({
@@ -25,14 +23,18 @@ export const LoginPage: FC = (): JSX.Element => {
     try {
       setLoad(true);
       setError("");
-      const { data } = await api.post(`/public/login`, props);
-      setCookies("auth_root", `BEARER ${data.token}`);
-      setTimeout(() => navigate("/"), 500);
+      const { data, status } = await api.post(`/public/login`, props);
+      if (status === 200) {
+        if (data.csrfToken) {
+          api.defaults.headers.common["X-XSRF-TOKEN"] = data.csrfToken;
+        }
+        setTimeout(() => navigate("/", { replace: true }), 500);
+      }
     } catch (error) {
       setLoad(false);
       if (error instanceof AxiosError) {
         setError(
-          error.response?.data.details?.[0]?.message || "Erro ao fazer login"
+          error.response?.data.details?.[0]?.message || "Erro ao fazer login",
         );
         return;
       }
@@ -44,14 +46,18 @@ export const LoginPage: FC = (): JSX.Element => {
     try {
       setLoad(true);
       setError("");
-      const { data } = await api.post(`/public/register-root`, props);
-      setCookies("auth_root", `BEARER ${data.token}`);
-      setTimeout(() => navigate("/"), 500);
+      const { data, status } = await api.post(`/public/register-root`, props);
+      if (status === 200) {
+        if (data.csrfToken) {
+          api.defaults.headers.common["X-XSRF-TOKEN"] = data.csrfToken;
+        }
+        setTimeout(() => navigate("/", { replace: true }), 500);
+      }
     } catch (error) {
       setLoad(false);
       if (error instanceof AxiosError) {
         setError(
-          error.response?.data.details?.[0]?.message || "Erro ao fazer login"
+          error.response?.data.details?.[0]?.message || "Erro ao fazer login",
         );
         return;
       }
@@ -68,7 +74,6 @@ export const LoginPage: FC = (): JSX.Element => {
         return;
       }
     })();
-    removeCookie("auth_root");
   }, []);
 
   return (

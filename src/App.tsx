@@ -1,5 +1,10 @@
+import { Provider } from "./components/ui/provider";
 import { RoutesApp } from "./Routes";
 
 export default function App() {
-  return <RoutesApp />;
+  return (
+    <Provider>
+      <RoutesApp />
+    </Provider>
+  );
 }
