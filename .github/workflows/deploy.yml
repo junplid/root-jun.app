@@ -22,8 +22,8 @@ jobs:
 
       # 3. Instalar e buildar
       - run: |
-          yarn install --frozen-lockfile
-          yarn build
+          npm i
+          npm run build
       - name: Copiar .env.production para dist/
         run: cp .env.production dist/
 
