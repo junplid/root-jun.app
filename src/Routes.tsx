@@ -10,6 +10,8 @@ import { FlowsPage } from "./pages/Flows";
 import { GeralLogsPage } from "./pages/GeralLogs";
 import { SocketProvider } from "./contexts/socket.context";
 import { AgentTemplatesPage } from "./pages/AgentTemplates";
+import { CreateAgentTemplatePage } from "./pages/AgentTemplates/page-create";
+import { UpdateAgentTemplatePage } from "./pages/AgentTemplates/page-edit";
 
 export const RoutesApp: FC = (): JSX.Element => (
   <BrowserRouter>
@@ -31,6 +33,14 @@ export const RoutesApp: FC = (): JSX.Element => (
         <Route path={"/flows"} element={<FlowsPage />} />
         <Route path={"/geral-logs"} element={<GeralLogsPage />} />
         <Route path={"/agent-templates"} element={<AgentTemplatesPage />} />
+        <Route
+          path={"/agent-templates/create"}
+          element={<CreateAgentTemplatePage />}
+        />
+        <Route
+          path={"/agent-templates/:id"}
+          element={<UpdateAgentTemplatePage />}
+        />
       </Route>
 
       <Route path={"*"} element={<div>Página não encontrada</div>} />

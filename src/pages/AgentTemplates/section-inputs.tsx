@@ -1,9 +1,10 @@
 import { memo } from "react";
 import { Control, Controller, useFieldArray, useWatch } from "react-hook-form";
-import { Fields } from ".";
+import { Fields } from "./page-edit";
 import { Button, Checkbox, Input, TagsInput } from "@chakra-ui/react";
 import { Field } from "../../components/ui/field";
 import SelectComponent from "../../components/Select";
+import TextareaAutosize from "react-textarea-autosize";
 
 type SectionItemProps = {
   nestIndex: number;
@@ -17,6 +18,97 @@ const options_type_input = [
   { label: "Seletor puro", value: "select" },
   { label: "Tags Inpuy", value: "tags-input" },
 ];
+
+function InputsTextareaOrInput({
+  index,
+  nestIndex,
+  control,
+}: {
+  nestIndex: number;
+  index: number;
+  control: Control<Fields>;
+}) {
+  const inputType = useWatch({
+    control,
+    name: `sections.${nestIndex}.inputs.${index}.type`,
+  });
+
+  if (inputType === "text") {
+    return (
+      <>
+        <Controller
+          name={`sections.${nestIndex}.inputs.${index}.defaultValue`}
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field
+              invalid={!!fieldState.error}
+              errorText={fieldState.error?.message}
+              label="Valor inicial"
+            >
+              <Input {...field} className="bg-white!" />
+            </Field>
+          )}
+        />
+        <Controller
+          name={`sections.${nestIndex}.inputs.${index}.placeholder`}
+          control={control}
+          render={({ field, fieldState }) => (
+            <Field
+              invalid={!!fieldState.error}
+              errorText={fieldState.error?.message}
+              label="Placeholder"
+            >
+              <Input {...field} className="bg-white!" />
+            </Field>
+          )}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Controller
+        name={`sections.${nestIndex}.inputs.${index}.defaultValue`}
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field
+            invalid={!!fieldState.error}
+            errorText={fieldState.error?.message}
+            label="Valor inicial"
+          >
+            <TextareaAutosize
+              style={{ resize: "none" }}
+              minRows={3}
+              maxRows={10}
+              {...field}
+              className="p-3 py-2.5 rounded-sm w-full bg-white border-black/10 border"
+            />
+          </Field>
+        )}
+      />
+      <Controller
+        name={`sections.${nestIndex}.inputs.${index}.placeholder`}
+        control={control}
+        render={({ field, fieldState }) => (
+          <Field
+            invalid={!!fieldState.error}
+            errorText={fieldState.error?.message}
+            label="Placeholder"
+          >
+            <TextareaAutosize
+              {...field}
+              style={{ resize: "none" }}
+              minRows={3}
+              maxRows={10}
+              className="p-3 py-2.5 rounded-sm w-full bg-white border-black/10 border"
+            />
+          </Field>
+        )}
+      />
+    </>
+  );
+}
 
 function InputsTagsInput({
   index,
@@ -163,6 +255,7 @@ export const SectionInputs = memo(
     const { fields, append, remove } = useFieldArray({
       control,
       name: `sections.${nestIndex}.inputs`,
+      keyName: "fieldId",
     });
 
     const currentName = useWatch({
@@ -191,7 +284,10 @@ export const SectionInputs = memo(
             }
 
             return (
-              <div className="bg-white p-4 flex flex-col gap-y-3" key={_.id}>
+              <div
+                className="bg-white p-4 flex flex-col gap-y-3"
+                key={_.fieldId}
+              >
                 <div className="grid grid-cols-[140px_220px_1fr] gap-x-3">
                   <Controller
                     control={control}
@@ -256,31 +352,11 @@ export const SectionInputs = memo(
                     </Field>
                   )}
                 />
-                <Controller
-                  name={`sections.${nestIndex}.inputs.${index}.defaultValue`}
+                <InputsTextareaOrInput
                   control={control}
-                  render={({ field, fieldState }) => (
-                    <Field
-                      invalid={!!fieldState.error}
-                      errorText={fieldState.error?.message}
-                      label="Valor inicial"
-                    >
-                      <Input {...field} className="bg-white!" />
-                    </Field>
-                  )}
-                />
-                <Controller
-                  name={`sections.${nestIndex}.inputs.${index}.placeholder`}
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <Field
-                      invalid={!!fieldState.error}
-                      errorText={fieldState.error?.message}
-                      label="Placeholder"
-                    >
-                      <Input {...field} className="bg-white!" />
-                    </Field>
-                  )}
+                  index={index}
+                  nestIndex={nestIndex}
+                  key={_.fieldId}
                 />
                 <Controller
                   control={control}
@@ -313,14 +389,14 @@ export const SectionInputs = memo(
                   control={control}
                   index={index}
                   nestIndex={nestIndex}
-                  key={_.id}
+                  key={_.fieldId}
                 />
 
                 <SelectorInput
                   control={control}
                   index={index}
                   nestIndex={nestIndex}
-                  key={_.id}
+                  key={_.fieldId}
                 />
 
                 <div className="flex justify-end">
