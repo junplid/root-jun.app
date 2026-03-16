@@ -38,12 +38,18 @@ export const AuthorizationProvider: FC<PropsAuthorizationContextProvider_I> = ({
 
   const verifyToken = useCallback(async () => {
     try {
-      await api.get(`/root/verify-authorization`);
+      const { status, data } = await api.get(`/root/verify-authorization`);
+      if (status === 200) {
+        if (data.csrfToken) {
+          api.defaults.headers.common["X-XSRF-TOKEN"] = data.csrfToken;
+        }
+        setTimeout(() => navigate("/", { replace: true }), 500);
+      }
       setIsLoaded(true);
       setIsAuth(true);
     } catch (error) {
       if (error instanceof AxiosError) {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 || error.response?.status === 403) {
           handleLogout();
         }
       }
