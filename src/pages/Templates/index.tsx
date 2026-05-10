@@ -17,7 +17,7 @@ export const AgentTemplatesPage: React.FC = (): JSX.Element => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/root/agent-templates");
+        const { data } = await api.get("/root/templates");
         setTemplates(data.templates);
       } catch (error) {
         if (error instanceof AxiosError) {

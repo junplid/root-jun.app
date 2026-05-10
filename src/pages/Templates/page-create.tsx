@@ -8,7 +8,7 @@ import Editor, { Monaco, OnMount } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import TextareaAutosize from "react-textarea-autosize";
 import { Field } from "../../components/ui/field";
-import { Button, Checkbox, Input, TagsInput } from "@chakra-ui/react";
+import { Button, Checkbox, Input, } from "@chakra-ui/react";
 import { SortableItem } from "./SortableItems";
 import { ClipboardEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import {
@@ -66,12 +66,9 @@ const FormSchema = z.object({
   title: z.string().min(1, "Campo obrigatório."),
   card_desc: z.string().min(1, "Campo obrigatório."),
   markdown_desc: z.string().min(1, "Campo obrigatório."),
-  chat_demo: z.string().min(1, "Campo obrigatório."),
-  variables: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
-  config_flow: z.string().min(1, "Campo obrigatório."),
+  type: z.string().optional(),
+  chat_demo: z.string().optional(),
   script_runner: z.string().min(1, "Campo obrigatório."),
-  script_build_agentai_for_test: z.string().min(1, "Campo obrigatório."),
   sections: z.array(SectionSchema),
 });
 export type Fields = z.infer<typeof FormSchema>;
@@ -90,8 +87,6 @@ export function CreateAgentTemplatePage() {
     resolver: zodResolver(FormSchema),
     mode: "onSubmit",
     defaultValues: {
-      tags: [],
-      variables: [],
       sections: [],
     },
   });
@@ -321,7 +316,7 @@ export function CreateAgentTemplatePage() {
   return (
     <form onSubmit={handleSubmit(submit)} className="flex flex-col">
       <div className="mb-8 flex items-center gap-x-8">
-        <Link to={"/agent-templates"} className="text-blue-600 bg-blue-200">
+        <Link to={"/templates"} className="text-blue-600 bg-blue-200">
           Voltar
         </Link>
         <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
@@ -330,6 +325,15 @@ export function CreateAgentTemplatePage() {
       </div>
       <section className="flex mb-5 flex-col space-y-3 bg-neutral-200 p-4">
         <h4 className="pb-3 font-semibold">Configurações iniciais</h4>
+        <Field
+          invalid={!!errors.type}
+          errorText={errors.type?.message}
+          label="Tipo do template"
+          helperText="AGENT, MENU, ..."
+          required
+        >
+          <Input className="bg-white!" {...register("type")} />
+        </Field>
         <Field
           invalid={!!errors.title}
           errorText={errors.title?.message}
@@ -447,79 +451,6 @@ export function CreateAgentTemplatePage() {
             </div>
           </div>
         </Field>
-        <div className="flex gap-x-3">
-          <Controller
-            control={control}
-            name="variables"
-            render={({ field: { value, onChange, ...rest }, fieldState }) => (
-              <TagsInput.Root
-                value={value}
-                onValueChange={(details) => onChange(details.value)}
-                {...rest}
-                invalid={!!fieldState.error}
-              >
-                <TagsInput.Label>
-                  {"$vars.[x: number].name ou $vars.[x: number].id"}
-                </TagsInput.Label>
-                <TagsInput.Control>
-                  <TagsInput.Items />
-                  <TagsInput.Input placeholder="Add variavel..." />
-                </TagsInput.Control>
-              </TagsInput.Root>
-            )}
-          />
-          <Controller
-            control={control}
-            name="tags"
-            render={({ field: { value, onChange, ...rest }, fieldState }) => (
-              <TagsInput.Root
-                value={value}
-                onValueChange={(details) => onChange(details.value)}
-                {...rest}
-                invalid={!!fieldState.error}
-              >
-                <TagsInput.Label>
-                  {"$tags.[x: number].name ou $tags.[x: number].id"}
-                </TagsInput.Label>
-                <TagsInput.Control>
-                  <TagsInput.Items />
-                  <TagsInput.Input placeholder="Add tag..." />
-                </TagsInput.Control>
-              </TagsInput.Root>
-            )}
-          />
-        </div>
-        <Controller
-          control={control}
-          name="config_flow"
-          render={({ field: { value, onChange, ...rest }, fieldState }) => (
-            <Field
-              invalid={!!fieldState.error}
-              errorText={fieldState.error?.message}
-              {...rest}
-              label="Construtor de fluxo"
-              required
-            >
-              <Editor
-                height="300px"
-                defaultLanguage="json"
-                theme="vs-dark"
-                defaultValue={`{
-          "nome_da_variavel_1": "$vars.[0].name",
-          "id_da_variavel_1": "$vars.[0].id"
-        }`}
-                onChange={(val) => {
-                  onChange(val ?? "");
-                }}
-                value={value}
-                options={{
-                  automaticLayout: true,
-                  minimap: { enabled: false },
-                }}
-              />
-            </Field>
-          )}
-        />
       </section>
 
       <div className="flex flex-col mb-5 space-y-3 bg-neutral-200 p-4">
@@ -667,39 +598,6 @@ export function CreateAgentTemplatePage() {
                 defaultValue="async function runner(props: RunnerProps) {
               //
           }"
-                onChange={(val) => {
-                  onChange(val ?? "");
-                }}
-                value={value}
-                beforeMount={handleEditorWillMount}
-                options={{
-                  automaticLayout: true,
-                  minimap: { enabled: false },
-                }}
-              />
-            </Field>
-          )}
-        />
-      </section>
-
-      <section className="flex mb-5 flex-col space-y-3 bg-neutral-200 p-4">
-        <h4 className="pb-3 font-semibold">Script montar AGENTE runner</h4>
-
-        <Controller
-          control={control}
-          name="script_build_agentai_for_test"
-          render={({ field: { value, onChange }, fieldState }) => (
-            <Field
-              invalid={!!fieldState.error}
-              errorText={fieldState.error?.message}
-            >
-              <Editor
-                height="300px"
-                defaultLanguage="typescript"
-                theme="vs-dark"
-                defaultValue="function runner_agent_test(props: RunnerAgentTestProps): ReturnRunnerAgentTest {
-              //
-        }"
                 onChange={(val) => {
                   onChange(val ?? "");
                 }}

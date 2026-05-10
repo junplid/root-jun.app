@@ -110,15 +110,15 @@ export const AppLayout = memo(function AppLayout() {
             </MenuItem>
             <MenuItem
               onClick={() => setToggled(false)}
-              component={<Link to={"/agent-templates"} />}
+              component={<Link to={"/templates"} />}
               icon={<ImInsertTemplate size={18} />}
               className={
-                isActive("/agent-templates")
+                isActive("/templates")
                   ? "bg-blue-50 text-blue-700 font-bold"
                   : ""
               }
             >
-              Templates de agentes
+              Templates
             </MenuItem>
           </Menu>
         </Sidebar>
